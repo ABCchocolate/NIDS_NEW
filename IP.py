@@ -1,7 +1,6 @@
-
 from PyQt5 import QtCore
 from scapy.all import *
-
+from scapy.layers.inet import TCP,UDP,ICMP,DNS,IP
 
 class ThreadSniffer(QtCore.QThread):
     connection = QtCore.pyqtSignal(list)
@@ -19,7 +18,7 @@ class ThreadSniffer(QtCore.QThread):
         Layer_packet = packet.getlayer(IP)
         Length_packet = str(len(packet))
         row_Data = [str(packet.time), str(Layer_packet.src), str(Layer_packet.dst)]
-
+        
         packet_time = datetime.fromtimestamp(packet.time)
         formatted_time = packet_time.strftime("%Y.%m.%d.%H:%M:%S")
     
@@ -30,11 +29,34 @@ class ThreadSniffer(QtCore.QThread):
             # 포트 번호 정보를 가져오는 부분
             row_Data.append(str(packet[TCP].sport))
             row_Data.append(str(packet[TCP].dport))
+            row_Data.append(packet.getlayer(TCP).fields['logged_in'])
+            row_Data.append(packet.getlayer(TCP).fields['dst_host_diff_srv_rate'])
+            row_Data.append(packet.getlayer(TCP).fields['num_file_creations'])
+            row_Data.append(packet.getlayer(TCP).fields['dst_host_srv_count'])
+            row_Data.append(packet.getlayer(TCP).fields['dst_host_same_srv_rate'])
+            row_Data.append(packet.getlayer(TCP).fields['dst_host_serror_rate'])
+            row_Data.append(packet.getlayer(TCP).fields['num_acceerror_rate'])
+            row_Data.append(packet.getlayer(TCP).fields['dst_host_same_src_port_rate'])
+            row_Data.append(packet.getlayer(TCP).fields['same_srv_rate'])
+            row_Data.append(packet.getlayer(TCP).fields['srv_serror_rate'])
+            row_Data.append(packet.getlayer(TCP).fields['dst_host_srv_serror_rate'])
         elif packet.haslayer(UDP):
             row_Data.append('UDP')
             # 포트 번호 정보를 가져오는 부분
             row_Data.append(str(packet[UDP].sport))
             row_Data.append(str(packet[UDP].dport))
+            row_Data.append(packet.getlayer(UDP).fields['logged_in'])
+            row_Data.append(packet.getlayer(UDP).fields['dst_host_diff_srv_rate'])
+            row_Data.append(packet.getlayer(UDP).fields['num_file_creations'])
+            row_Data.append(packet.getlayer(UDP).fields['dst_host_srv_count'])
+            row_Data.append(packet.getlayer(UDP).fields['dst_host_same_srv_rate'])
+            row_Data.append(packet.getlayer(UDP).fields['dst_host_serror_rate'])
+            row_Data.append(packet.getlayer(UDP).fields['num_acceerror_rate'])
+            row_Data.append(packet.getlayer(UDP).fields['dst_host_same_src_port_rate'])
+            row_Data.append(packet.getlayer(UDP).fields['same_srv_rate'])
+            row_Data.append(packet.getlayer(UDP).fields['srv_serror_rate'])
+            row_Data.append(packet.getlayer(UDP).fields['dst_host_srv_serror_rate'])
+          
         elif packet.haslayer(ICMP):
             row_Data.append('ICMP')
         elif packet.haslayer(DNS):
@@ -44,6 +66,7 @@ class ThreadSniffer(QtCore.QThread):
             row_Data.append(str(packet[DNS].dport))
         else:
             row_Data.append('Unknown Type')
+
 
         # 패킷 페이로드 정보를 가져오는 부분
         payload = packet.getlayer(Raw)
@@ -57,6 +80,8 @@ class ThreadSniffer(QtCore.QThread):
         # 패킷 흐름 정보를 가져오는 부분
         row_Data.append(hexdump(packet, dump=True))
 
+       
+
         self.connection.emit(row_Data)
 
     def run(self):
@@ -66,4 +91,3 @@ class ThreadSniffer(QtCore.QThread):
         self.Running = False
         self.terminate()
         self.wait(100)
-

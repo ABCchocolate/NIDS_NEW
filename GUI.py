@@ -10,13 +10,14 @@ import numpy as np
 import logging
 import sys
 from datetime import datetime
-from tensorflow.keras.models import load_model
-import pandas as pd
 import random
 import matplotlib.pyplot as plt
-
-
-
+feature=["duration","protocol_type","service","flag","src_bytes","dst_bytes","land","wrong_fragment","urgent","hot",
+          "num_failed_logins","logged_in","num_compromised","root_shell","su_attempted","num_rootss_files","num_outbound_cmds","is_host_login","is_guest_login","count","srv_count","s","num_file_creations","num_shells",
+          "num_acceerror_rate","srv_serror_rate",
+          "rerror_rate","srv_rerror_rate","same_srv_rate","diff_srv_rate","srv_diff_host_rate","dst_host_count","dst_host_srv_count", 
+          "dst_host_same_srv_rate","dst_host_diff_srv_rate","dst_host_same_src_port_rate","dst_host_srv_diff_host_rate","dst_host_serror_rate",
+          "dst_host_srv_serror_rate","dst_host_rerror_rate","dst_host_srv_rerror_rate","label","difficulty"]
 
 #클래스 이름을 패킷이라고 하며 
 class Packet:
@@ -60,58 +61,43 @@ class MainWindow(QtWidgets.QMainWindow):
 
             self.attackers.append((source, destination, protocol, length, info))
             print("Added attacker:", (source, destination, protocol, length, info))
-            current_time = datetime.now().strftime("%Y.%m.%d.%H:%M:%S")
-
-            # 현재 시간과 이전 패킷 데이터의 시간 비교하여 삽입 위치 결정
-            row_to_insert = 0
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            # 패킷 데이터를 테이블의 마지막 행에 추가
             row_count = self.ui.Packets.rowCount()
-            for row in range(row_count):
-                item = self.ui.Packets.item(row, 0)
-                if item is not None:
-                    time_str = item.text()
-                    time_obj = datetime.strptime(time_str, "%Y.%m.%d.%H:%M:%S")
-                    if current_time >= time_obj.strftime("%Y.%m.%d.%H:%M:%S"):
-                        row_to_insert = row + 1
-
-            # 패킷 데이터를 테이블의 적절한 위치에 추가
-            self.ui.Packets.insertRow(row_to_insert)
+            self.ui.Packets.insertRow(row_count)
 
             # 필드 값을 테이블에 설정
-            self.ui.Packets.setItem(row_to_insert, 0, QtWidgets.QTableWidgetItem(current_time))
-            self.ui.Packets.setItem(row_to_insert, 1, QtWidgets.QTableWidgetItem(source))
-            self.ui.Packets.setItem(row_to_insert, 2, QtWidgets.QTableWidgetItem(destination))
-            self.ui.Packets.setItem(row_to_insert, 3, QtWidgets.QTableWidgetItem(protocol))
-            self.ui.Packets.setItem(row_to_insert, 4, QtWidgets.QTableWidgetItem(length))
-            self.ui.Packets.setItem(row_to_insert, 5, QtWidgets.QTableWidgetItem(info))
+            self.ui.Packets.setItem(row_count, 0, QtWidgets.QTableWidgetItem(current_time))
+            self.ui.Packets.setItem(row_count, 1, QtWidgets.QTableWidgetItem(source))
+            self.ui.Packets.setItem(row_count, 2, QtWidgets.QTableWidgetItem(destination))
+            self.ui.Packets.setItem(row_count, 3, QtWidgets.QTableWidgetItem(protocol))
+            self.ui.Packets.setItem(row_count, 4, QtWidgets.QTableWidgetItem(length))
+            self.ui.Packets.setItem(row_count, 5, QtWidgets.QTableWidgetItem(info))
 
             if info != "normal":
                 for col in range(self.ui.Packets.columnCount()):
-                    item = self.ui.Packets.item(row_to_insert, col)
+                    item = self.ui.Packets.item(row_count, col)
                     item.setBackground(QtGui.QColor(255, 0, 0))
 
+
+           
+
     def detect_attackers(self):
-        model = load_model("weights.h5")
+        model = load_model("NIDS-main/weight/final_model.h5")
         for row in range(self.ui.Packets.rowCount()):
             source_ip = self.ui.Packets.item(row, 1).text()
             if source_ip in self.attackers:
                 packet_data = []
                 for col in range(self.ui.Packets.columnCount()):
                     item = self.ui.Packets.item(row, col)
+                    item.setBackground(QtGui.QColor(255, 0, 0))
                     packet_data.append(float(item.text()))
 
-                # 패킷 데이터를 numpy 배열로 변환
-                import numpy as np
-                packet_data = np.array(packet_data)
-
                 # 패킷 데이터를 모델에 입력하여 공격 여부를 예측
-                packet_data = packet_data.reshape(1, -1)  # (1, n) 형태로 변환
-                prediction = model.predict(packet_data)
+                prediction = model.predict([packet_data])
                 if prediction[0] > 0.5:
-                    for col in range(self.ui.Packets.columnCount()):
-                        item = self.ui.Packets.item(row, col)
-                        item.setBackground(QtGui.QColor(255, 0, 0))
-
-                        
+                    print("Detected attack from source IP:", source_ip)
+        
 # Pyqt5 패키지로 GUI 창을 만들 때 사용되는 QWidget, QDialog, QMainWindow 클래스 3형제들
 #Main Windows는 상태바랑 메뉴바 같은 걸 넣을 수 있어 말그대로 Win32 API로 Application 만드는 거랑 똑같다
 #PyQt5로 GUI 구성시 윈도우 창을 생성하는 클래스
